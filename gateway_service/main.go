@@ -28,8 +28,8 @@ import (
 )
 
 // 嵌入字体文件
-// 使用方法：将中文字体文件（如 msyh.ttc 或 simsun.ttc）复制到 fonts 目录下
-// 支持的格式：.ttf, .ttc, .otf
+// 使用方法：将中文字体文件复制到 fonts 目录下
+// 支持的格式：.ttf, .otf（注意：Fyne不支持.ttc字体集合文件）
 // 如果没有字体文件，程序会自动使用系统字体作为fallback
 //go:embed fonts/*
 var embeddedFonts embed.FS
@@ -724,24 +724,21 @@ func loadSystemChineseFont() fyne.Resource {
 			windir = "C:\\Windows"
 		}
 		
-		// 尝试多个可能的字体路径
+		// 注意：Fyne不支持.ttc字体集合，优先使用.ttf文件
 		fontPaths = []string{
-			filepath.Join(windir, "Fonts", "msyh.ttc"),    // Microsoft YaHei (微软雅黑) - 最常见
-			filepath.Join(windir, "Fonts", "simsun.ttc"),  // SimSun (宋体) - 传统字体
-			filepath.Join(windir, "Fonts", "simhei.ttf"),  // SimHei (黑体)
-			filepath.Join(windir, "Fonts", "msyhbd.ttc"),  // Microsoft YaHei Bold
-			filepath.Join(windir, "Fonts", "msyhl.ttc"),   // Microsoft YaHei Light
-			filepath.Join(windir, "Fonts", "simkai.ttf"),  // SimKai (楷体)
-			filepath.Join(windir, "Fonts", "simli.ttf"),   // SimLi (隶书)
-			filepath.Join(windir, "Fonts", "msjh.ttc"),    // Microsoft JhengHei (微软正黑体)
-			filepath.Join(windir, "Fonts", "mingliu.ttc"), // MingLiU (新细明体)
+			filepath.Join(windir, "Fonts", "simhei.ttf"),  // SimHei (黑体) - .ttf格式
+			filepath.Join(windir, "Fonts", "simsun.ttf"),  // SimSun (宋体) - .ttf格式
+			filepath.Join(windir, "Fonts", "simkai.ttf"),  // SimKai (楷体) - .ttf格式
+			filepath.Join(windir, "Fonts", "simli.ttf"),   // SimLi (隶书) - .ttf格式
+			// 如果找不到.ttf，尝试.ttc（但Fyne可能不支持，会fallback到系统默认字体）
+			filepath.Join(windir, "Fonts", "msyh.ttc"),    // Microsoft YaHei (微软雅黑) - .ttc格式（可能不支持）
+			filepath.Join(windir, "Fonts", "simsun.ttc"),  // SimSun (宋体) - .ttc格式（可能不支持）
 		}
 		
-		// 也尝试使用绝对路径（某些情况下可能更可靠）
 		if windir != "C:\\Windows" {
 			fontPaths = append(fontPaths,
-				filepath.Join("C:\\Windows", "Fonts", "msyh.ttc"),
-				filepath.Join("C:\\Windows", "Fonts", "simsun.ttc"),
+				filepath.Join("C:\\Windows", "Fonts", "simhei.ttf"),
+				filepath.Join("C:\\Windows", "Fonts", "simsun.ttf"),
 			)
 		}
 	case "darwin": // macOS
@@ -788,18 +785,16 @@ func loadSystemChineseFont() fyne.Resource {
 }
 
 // loadEmbeddedFont 加载嵌入的字体文件
+// 注意：Fyne不支持.ttc（TrueType Collection）字体集合文件，只支持.ttf和.otf
 func loadEmbeddedFont() fyne.Resource {
-	// 支持的字体文件扩展名
-	fontExtensions := []string{".ttf", ".ttc", ".otf"}
-
 	// 直接读取fonts目录下的文件
 	entries, err := embeddedFonts.ReadDir("fonts")
 	if err != nil {
 		return nil
 	}
 
-	// 按优先级查找字体文件（优先查找常见的字体文件名）
-	preferredNames := []string{"chinese.ttf", "chinese.ttc", "msyh.ttc", "simsun.ttc", "font.ttf", "font.ttc"}
+	// 按优先级查找字体文件（只查找.ttf和.otf，跳过.ttc）
+	preferredNames := []string{"chinese.ttf", "chinese.otf", "msyh.ttf", "simsun.ttf", "font.ttf", "font.otf"}
 
 	// 先查找优先字体
 	for _, preferredName := range preferredNames {
@@ -813,19 +808,19 @@ func loadEmbeddedFont() fyne.Resource {
 		}
 	}
 
-	// 如果优先字体没找到，查找任何字体文件
+	// 如果优先字体没找到，查找任何.ttf或.otf字体文件（跳过.ttc）
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
 
 		name := entry.Name()
-		for _, ext := range fontExtensions {
-			if filepath.Ext(name) == ext {
-				data, err := embeddedFonts.ReadFile("fonts/" + name)
-				if err == nil && len(data) > 0 {
-					return fyne.NewStaticResource(name, data)
-				}
+		ext := filepath.Ext(name)
+		// 只加载.ttf和.otf文件，跳过.ttc（Fyne不支持）
+		if ext == ".ttf" || ext == ".otf" {
+			data, err := embeddedFonts.ReadFile("fonts/" + name)
+			if err == nil && len(data) > 0 {
+				return fyne.NewStaticResource(name, data)
 			}
 		}
 	}

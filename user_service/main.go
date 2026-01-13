@@ -26,8 +26,8 @@ import (
 )
 
 // 嵌入字体文件
-// 使用方法：将中文字体文件（如 msyh.ttc 或 simsun.ttc）复制到 fonts 目录下
-// 支持的格式：.ttf, .ttc, .otf
+// 使用方法：将中文字体文件复制到 fonts 目录下
+// 支持的格式：.ttf, .otf（注意：Fyne不支持.ttc字体集合文件）
 // 如果没有字体文件，程序会自动使用系统字体作为fallback
 //go:embed fonts/*
 var embeddedFonts embed.FS
@@ -473,10 +473,8 @@ func loadSystemChineseFont() fyne.Resource {
 }
 
 // loadEmbeddedFont 加载嵌入的字体文件
+// 注意：Fyne不支持.ttc（TrueType Collection）字体集合文件，只支持.ttf和.otf
 func loadEmbeddedFont() fyne.Resource {
-	// 支持的字体文件扩展名
-	fontExtensions := []string{".ttf", ".ttc", ".otf"}
-
 	// 直接读取fonts目录下的文件
 	entries, err := embeddedFonts.ReadDir("fonts")
 	if err != nil {
@@ -484,7 +482,7 @@ func loadEmbeddedFont() fyne.Resource {
 	}
 
 	// 按优先级查找字体文件（优先查找常见的字体文件名）
-	preferredNames := []string{"chinese.ttf", "chinese.ttc", "msyh.ttc", "simsun.ttc", "font.ttf", "font.ttc"}
+	preferredNames := []string{"chinese.ttf", "chinese.otf", "msyh.ttf", "simsun.ttf", "font.ttf", "font.otf"}
 
 	// 先查找优先字体
 	for _, preferredName := range preferredNames {
@@ -505,12 +503,12 @@ func loadEmbeddedFont() fyne.Resource {
 		}
 
 		name := entry.Name()
-		for _, ext := range fontExtensions {
-			if filepath.Ext(name) == ext {
-				data, err := embeddedFonts.ReadFile("fonts/" + name)
-				if err == nil && len(data) > 0 {
-					return fyne.NewStaticResource(name, data)
-				}
+		ext := filepath.Ext(name)
+		// 只加载.ttf和.otf文件，跳过.ttc（Fyne不支持）
+		if ext == ".ttf" || ext == ".otf" {
+			data, err := embeddedFonts.ReadFile("fonts/" + name)
+			if err == nil && len(data) > 0 {
+				return fyne.NewStaticResource(name, data)
 			}
 		}
 	}
