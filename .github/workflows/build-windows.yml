@@ -7,6 +7,7 @@ on:
       - 'v*'
     branches:
       - main
+      - master
 
 jobs:
   build:
@@ -22,6 +23,7 @@ jobs:
         go-version: '1.21'
     
     - name: Create bin directory
+      shell: cmd
       run: |
         if not exist bin mkdir bin
     
@@ -29,36 +31,42 @@ jobs:
       run: go mod download
     
     - name: Build center_service
+      shell: cmd
       run: |
         cd center_service
         go build -o ..\bin\center_service.exe main.go
         if %errorlevel% neq 0 exit /b 1
     
     - name: Build user_service
+      shell: cmd
       run: |
         cd user_service
         go build -o ..\bin\user_service.exe main.go
         if %errorlevel% neq 0 exit /b 1
     
     - name: Build order_service
+      shell: cmd
       run: |
         cd order_service
         go build -o ..\bin\order_service.exe main.go
         if %errorlevel% neq 0 exit /b 1
     
     - name: Build gateway_service
+      shell: cmd
       run: |
         cd gateway_service
         go build -o ..\bin\gateway_service.exe main.go
         if %errorlevel% neq 0 exit /b 1
     
     - name: Build client
+      shell: cmd
       run: |
         cd client
         go build -o ..\bin\client.exe main.go
         if %errorlevel% neq 0 exit /b 1
     
     - name: List built files
+      shell: cmd
       run: dir bin\*.exe
     
     - name: Upload artifacts
