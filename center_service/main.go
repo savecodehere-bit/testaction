@@ -585,42 +585,40 @@ func loadSystemChineseFont() fyne.Resource {
 			windir = "C:\\Windows"
 		}
 		
-		// 尝试多个可能的字体路径
+		// 注意：Fyne不支持.ttc字体集合，只使用.ttf文件
 		fontPaths = []string{
-			filepath.Join(windir, "Fonts", "msyh.ttc"),    // Microsoft YaHei (微软雅黑) - 最常见
-			filepath.Join(windir, "Fonts", "simsun.ttc"),  // SimSun (宋体) - 传统字体
 			filepath.Join(windir, "Fonts", "simhei.ttf"),  // SimHei (黑体)
-			filepath.Join(windir, "Fonts", "msyhbd.ttc"),  // Microsoft YaHei Bold
-			filepath.Join(windir, "Fonts", "msyhl.ttc"),   // Microsoft YaHei Light
+			filepath.Join(windir, "Fonts", "simsun.ttf"),  // SimSun (宋体)
 			filepath.Join(windir, "Fonts", "simkai.ttf"),  // SimKai (楷体)
 			filepath.Join(windir, "Fonts", "simli.ttf"),   // SimLi (隶书)
-			filepath.Join(windir, "Fonts", "msjh.ttc"),    // Microsoft JhengHei (微软正黑体)
-			filepath.Join(windir, "Fonts", "mingliu.ttc"), // MingLiU (新细明体)
 		}
 		
-		// 也尝试使用绝对路径（某些情况下可能更可靠）
 		if windir != "C:\\Windows" {
 			fontPaths = append(fontPaths,
-				filepath.Join("C:\\Windows", "Fonts", "msyh.ttc"),
-				filepath.Join("C:\\Windows", "Fonts", "simsun.ttc"),
+				filepath.Join("C:\\Windows", "Fonts", "simhei.ttf"),
+				filepath.Join("C:\\Windows", "Fonts", "simsun.ttf"),
 			)
 		}
 	case "darwin": // macOS
+		// 只使用.ttf文件，Fyne不支持.ttc
 		fontPaths = []string{
-			"/System/Library/Fonts/PingFang.ttc",
 			"/Library/Fonts/Arial Unicode.ttf",
-			"/System/Library/Fonts/STHeiti Light.ttc",
 		}
 	case "linux":
+		// 只使用.ttf文件，Fyne不支持.ttc
 		fontPaths = []string{
-			"/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
-			"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
 			"/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
 		}
 	}
 
-	// 尝试加载第一个存在的字体文件
+	// 尝试加载系统字体文件（只加载.ttf和.otf，跳过.ttc）
 	for _, path := range fontPaths {
+		// 检查文件扩展名，只加载.ttf和.otf文件
+		ext := filepath.Ext(path)
+		if ext != ".ttf" && ext != ".otf" {
+			continue // 跳过非.ttf/.otf文件
+		}
+
 		// 检查文件是否存在
 		if info, err := os.Stat(path); err == nil && !info.IsDir() {
 			// 尝试使用file://协议加载字体

@@ -273,15 +273,12 @@ func loadSystemChineseFont() fyne.Resource {
 			windir = "C:\\Windows"
 		}
 
-		// 注意：Fyne不支持.ttc字体集合，优先使用.ttf文件
+		// 注意：Fyne不支持.ttc字体集合，只使用.ttf文件
 		fontPaths = []string{
-			filepath.Join(windir, "Fonts", "simhei.ttf"), // SimHei (黑体) - .ttf格式
-			filepath.Join(windir, "Fonts", "simsun.ttf"), // SimSun (宋体) - .ttf格式
-			filepath.Join(windir, "Fonts", "simkai.ttf"), // SimKai (楷体) - .ttf格式
-			filepath.Join(windir, "Fonts", "simli.ttf"),  // SimLi (隶书) - .ttf格式
-			// 如果找不到.ttf，尝试.ttc（但Fyne可能不支持，会fallback到系统默认字体）
-			filepath.Join(windir, "Fonts", "msyh.ttc"),   // Microsoft YaHei (微软雅黑) - .ttc格式（可能不支持）
-			filepath.Join(windir, "Fonts", "simsun.ttc"), // SimSun (宋体) - .ttc格式（可能不支持）
+			filepath.Join(windir, "Fonts", "simhei.ttf"), // SimHei (黑体)
+			filepath.Join(windir, "Fonts", "simsun.ttf"), // SimSun (宋体)
+			filepath.Join(windir, "Fonts", "simkai.ttf"), // SimKai (楷体)
+			filepath.Join(windir, "Fonts", "simli.ttf"),  // SimLi (隶书)
 		}
 
 		if windir != "C:\\Windows" {
@@ -291,23 +288,25 @@ func loadSystemChineseFont() fyne.Resource {
 			)
 		}
 	case "darwin": // macOS
-		// 优先使用.ttf文件，.ttc可能不支持
+		// 只使用.ttf文件，Fyne不支持.ttc
 		fontPaths = []string{
 			"/Library/Fonts/Arial Unicode.ttf",
-			"/System/Library/Fonts/PingFang.ttc",      // 可能不支持，但尝试
-			"/System/Library/Fonts/STHeiti Light.ttc", // 可能不支持，但尝试
 		}
 	case "linux":
-		// 优先使用.ttf文件
+		// 只使用.ttf文件，Fyne不支持.ttc
 		fontPaths = []string{
 			"/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-			"/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",           // 可能不支持，但尝试
-			"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", // 可能不支持，但尝试
 		}
 	}
 
-	// 尝试加载系统字体文件
+	// 尝试加载系统字体文件（只加载.ttf和.otf，跳过.ttc）
 	for _, path := range fontPaths {
+		// 检查文件扩展名，只加载.ttf和.otf文件
+		ext := filepath.Ext(path)
+		if ext != ".ttf" && ext != ".otf" {
+			continue // 跳过非.ttf/.otf文件
+		}
+
 		if info, err := os.Stat(path); err == nil && !info.IsDir() {
 			uri := storage.NewFileURI(path)
 			res, err := storage.LoadResourceFromURI(uri)
