@@ -1,0 +1,69 @@
+name: Build Windows Executables
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    
+    - name: Create bin directory
+      run: |
+        if not exist bin mkdir bin
+    
+    - name: Download dependencies
+      run: go mod download
+    
+    - name: Build center_service
+      run: |
+        cd center_service
+        go build -o ..\bin\center_service.exe main.go
+        if %errorlevel% neq 0 exit /b 1
+    
+    - name: Build user_service
+      run: |
+        cd user_service
+        go build -o ..\bin\user_service.exe main.go
+        if %errorlevel% neq 0 exit /b 1
+    
+    - name: Build order_service
+      run: |
+        cd order_service
+        go build -o ..\bin\order_service.exe main.go
+        if %errorlevel% neq 0 exit /b 1
+    
+    - name: Build gateway_service
+      run: |
+        cd gateway_service
+        go build -o ..\bin\gateway_service.exe main.go
+        if %errorlevel% neq 0 exit /b 1
+    
+    - name: Build client
+      run: |
+        cd client
+        go build -o ..\bin\client.exe main.go
+        if %errorlevel% neq 0 exit /b 1
+    
+    - name: List built files
+      run: dir bin\*.exe
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-binaries
+        path: bin/*.exe
+        retention-days: 30
