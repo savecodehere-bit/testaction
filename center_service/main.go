@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"image/color"
@@ -21,6 +22,13 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
+
+// 嵌入字体文件
+// 使用方法：将中文字体文件（如 msyh.ttc 或 simsun.ttc）复制到 fonts 目录下
+// 支持的格式：.ttf, .ttc, .otf
+// 如果没有字体文件，程序会自动使用系统字体作为fallback
+//go:embed fonts/*
+var embeddedFonts embed.FS
 
 // ServiceInfo 服务信息
 type ServiceInfo struct {
@@ -547,28 +555,55 @@ func newChineseTheme() *chineseTheme {
 	// 尝试加载系统字体
 	t.chineseFont = loadSystemChineseFont()
 	if t.chineseFont == nil {
-		// 如果找不到系统字体，使用默认字体
+		// 如果找不到系统字体，在Windows上直接使用默认主题字体
+		// Fyne在Windows上会自动使用系统默认字体，通常支持中文
 		t.chineseFont = t.baseTheme.Font(fyne.TextStyle{})
+		if t.chineseFont == nil {
+			t.chineseFont = theme.DefaultTheme().Font(fyne.TextStyle{})
+		}
 	}
 
 	return t
 }
 
-// loadSystemChineseFont 加载系统中文字体
+// loadSystemChineseFont 加载中文字体（优先使用嵌入的字体，否则使用系统字体）
 func loadSystemChineseFont() fyne.Resource {
+	// 1. 优先尝试加载嵌入的字体文件
+	if embeddedFont := loadEmbeddedFont(); embeddedFont != nil {
+		return embeddedFont
+	}
+
+	// 2. 如果嵌入字体不存在，尝试加载系统字体
 	var fontPaths []string
 
 	switch runtime.GOOS {
 	case "windows":
+		// Windows字体路径，按优先级排序
+		// 优先使用常见的Windows中文字体
 		windir := os.Getenv("WINDIR")
 		if windir == "" {
 			windir = "C:\\Windows"
 		}
+		
+		// 尝试多个可能的字体路径
 		fontPaths = []string{
-			filepath.Join(windir, "Fonts", "msyh.ttc"),   // Microsoft YaHei
-			filepath.Join(windir, "Fonts", "msyhbd.ttc"), // Microsoft YaHei Bold
-			filepath.Join(windir, "Fonts", "simsun.ttc"), // SimSun
-			filepath.Join(windir, "Fonts", "simhei.ttf"), // SimHei
+			filepath.Join(windir, "Fonts", "msyh.ttc"),    // Microsoft YaHei (微软雅黑) - 最常见
+			filepath.Join(windir, "Fonts", "simsun.ttc"),  // SimSun (宋体) - 传统字体
+			filepath.Join(windir, "Fonts", "simhei.ttf"),  // SimHei (黑体)
+			filepath.Join(windir, "Fonts", "msyhbd.ttc"),  // Microsoft YaHei Bold
+			filepath.Join(windir, "Fonts", "msyhl.ttc"),   // Microsoft YaHei Light
+			filepath.Join(windir, "Fonts", "simkai.ttf"),  // SimKai (楷体)
+			filepath.Join(windir, "Fonts", "simli.ttf"),   // SimLi (隶书)
+			filepath.Join(windir, "Fonts", "msjh.ttc"),    // Microsoft JhengHei (微软正黑体)
+			filepath.Join(windir, "Fonts", "mingliu.ttc"), // MingLiU (新细明体)
+		}
+		
+		// 也尝试使用绝对路径（某些情况下可能更可靠）
+		if windir != "C:\\Windows" {
+			fontPaths = append(fontPaths,
+				filepath.Join("C:\\Windows", "Fonts", "msyh.ttc"),
+				filepath.Join("C:\\Windows", "Fonts", "simsun.ttc"),
+			)
 		}
 	case "darwin": // macOS
 		fontPaths = []string{
@@ -586,11 +621,72 @@ func loadSystemChineseFont() fyne.Resource {
 
 	// 尝试加载第一个存在的字体文件
 	for _, path := range fontPaths {
-		if _, err := os.Stat(path); err == nil {
+		// 检查文件是否存在
+		if info, err := os.Stat(path); err == nil && !info.IsDir() {
+			// 尝试使用file://协议加载字体
 			uri := storage.NewFileURI(path)
 			res, err := storage.LoadResourceFromURI(uri)
-			if err == nil {
+			if err == nil && res != nil {
+				// 验证字体资源是否有效
+				content := res.Content()
+				if len(content) > 0 {
+					// 字体加载成功
+					return res
+				}
+			}
+			
+			// 如果storage.LoadResourceFromURI失败，尝试直接读取文件
+			if data, err := os.ReadFile(path); err == nil && len(data) > 0 {
+				// 创建内存资源
+				res := fyne.NewStaticResource(filepath.Base(path), data)
 				return res
+			}
+		}
+	}
+
+	// 如果所有字体都加载失败，返回nil（会使用默认字体）
+	return nil
+}
+
+// loadEmbeddedFont 加载嵌入的字体文件
+func loadEmbeddedFont() fyne.Resource {
+	// 支持的字体文件扩展名
+	fontExtensions := []string{".ttf", ".ttc", ".otf"}
+
+	// 直接读取fonts目录下的文件
+	entries, err := embeddedFonts.ReadDir("fonts")
+	if err != nil {
+		return nil
+	}
+
+	// 按优先级查找字体文件（优先查找常见的字体文件名）
+	preferredNames := []string{"chinese.ttf", "chinese.ttc", "msyh.ttc", "simsun.ttc", "font.ttf", "font.ttc"}
+
+	// 先查找优先字体
+	for _, preferredName := range preferredNames {
+		for _, entry := range entries {
+			if entry.Name() == preferredName && !entry.IsDir() {
+				data, err := embeddedFonts.ReadFile("fonts/" + preferredName)
+				if err == nil && len(data) > 0 {
+					return fyne.NewStaticResource(preferredName, data)
+				}
+			}
+		}
+	}
+
+	// 如果优先字体没找到，查找任何字体文件
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		for _, ext := range fontExtensions {
+			if filepath.Ext(name) == ext {
+				data, err := embeddedFonts.ReadFile("fonts/" + name)
+				if err == nil && len(data) > 0 {
+					return fyne.NewStaticResource(name, data)
+				}
 			}
 		}
 	}
