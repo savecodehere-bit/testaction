@@ -1,0 +1,132 @@
+version: '3.8'
+
+# 应用服务Docker Compose配置
+# 与 docker-compose.yml（数据库）配合使用
+
+services:
+  # 服务注册中心
+  center-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: center_service
+    container_name: microservice-center-service
+    ports:
+      - "${CENTER_PORT:-8080}:8080"
+    environment:
+      - PORT=8080
+      - REGISTRY_URL=${REGISTRY_URL:-http://center-service:8080}
+      - ENV=${ENV:-dev}
+    networks:
+      - microservice-network
+    depends_on:
+      - registry-db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/services"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # 用户服务
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: user_service
+    container_name: microservice-user-service
+    ports:
+      - "${USER_PORT:-8081}:8081"
+    environment:
+      - PORT=8081
+      - REGISTRY_URL=${REGISTRY_URL:-http://center-service:8080}
+      - ENV=${ENV:-dev}
+      # 数据库配置
+      - USER_DB_HOST=${USER_DB_HOST:-user-db}
+      - USER_DB_PORT=3306
+      - USER_DB_NAME=user_db
+      - USER_DB_USER=user_service
+      - USER_DB_PASSWORD=user_pass
+      # Redis配置
+      - USER_REDIS_HOST=${USER_REDIS_HOST:-user-redis}
+      - USER_REDIS_PORT=6379
+    networks:
+      - microservice-network
+    depends_on:
+      - center-service
+      - user-db
+      - user-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/user"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # 订单服务
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: order_service
+    container_name: microservice-order-service
+    ports:
+      - "${ORDER_PORT:-8082}:8082"
+    environment:
+      - PORT=8082
+      - REGISTRY_URL=${REGISTRY_URL:-http://center-service:8080}
+      - ENV=${ENV:-dev}
+      # 数据库配置
+      - ORDER_DB_HOST=${ORDER_DB_HOST:-order-db}
+      - ORDER_DB_PORT=3306
+      - ORDER_DB_NAME=order_db
+      - ORDER_DB_USER=order_service
+      - ORDER_DB_PASSWORD=order_pass
+      # Redis配置
+      - ORDER_REDIS_HOST=${ORDER_REDIS_HOST:-order-redis}
+      - ORDER_REDIS_PORT=6379
+    networks:
+      - microservice-network
+    depends_on:
+      - center-service
+      - order-db
+      - order-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8082/order"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # API网关服务
+  gateway-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: gateway_service
+    container_name: microservice-gateway-service
+    ports:
+      - "${GATEWAY_PORT:-8083}:8083"
+    environment:
+      - PORT=8083
+      - REGISTRY_URL=${REGISTRY_URL:-http://center-service:8080}
+      - ENV=${ENV:-dev}
+    networks:
+      - microservice-network
+    depends_on:
+      - center-service
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  microservice-network:
+    external: true
+

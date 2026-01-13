@@ -1,0 +1,70 @@
+# 生产环境配置示例
+# 使用方式: docker-compose -f docker-compose.yml -f docker-compose.services.yml -f docker-compose.prod.yml up
+
+version: '3.8'
+
+services:
+  center-service:
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=prod
+      - LOG_LEVEL=info
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  user-service:
+    ports:
+      - "8081:8081"
+    environment:
+      - ENV=prod
+      - LOG_LEVEL=info
+    deploy:
+      replicas: 2  # 可以启动多个实例
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  order-service:
+    ports:
+      - "8082:8082"
+    environment:
+      - ENV=prod
+      - LOG_LEVEL=info
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  gateway-service:
+    ports:
+      - "8083:8083"
+    environment:
+      - ENV=prod
+      - LOG_LEVEL=info
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+

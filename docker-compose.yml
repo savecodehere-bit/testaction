@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  # 用户服务的数据库
+  user-db:
+    image: mysql:8.0
+    container_name: microservice-user-db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: user_db
+      MYSQL_USER: user_service
+      MYSQL_PASSWORD: user_pass
+    volumes:
+      - user_db_data:/var/lib/mysql
+      - ./db-init/init-user-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - microservice-network
+
+  # 用户服务的Redis缓存
+  user-redis:
+    image: redis:7-alpine
+    container_name: microservice-user-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - user_redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - microservice-network
+
+  # 订单服务的数据库
+  order-db:
+    image: mysql:8.0
+    container_name: microservice-order-db
+    ports:
+      - "3307:3306"  # 不同端口避免冲突
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: order_db
+      MYSQL_USER: order_service
+      MYSQL_PASSWORD: order_pass
+    volumes:
+      - order_db_data:/var/lib/mysql
+      - ./db-init/init-order-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - microservice-network
+
+  # 订单服务的Redis缓存
+  order-redis:
+    image: redis:7-alpine
+    container_name: microservice-order-redis
+    ports:
+      - "6380:6379"  # 不同端口避免冲突
+    volumes:
+      - order_redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - microservice-network
+
+  # 服务注册中心的数据库（可选，如果注册中心需要持久化）
+  registry-db:
+    image: mysql:8.0
+    container_name: microservice-registry-db
+    ports:
+      - "3308:3306"  # 不同端口避免冲突
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: registry_db
+      MYSQL_USER: registry_service
+      MYSQL_PASSWORD: registry_pass
+    volumes:
+      - registry_db_data:/var/lib/mysql
+      - ./db-init/init-registry-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - microservice-network
+
+volumes:
+  user_db_data:
+  user_redis_data:
+  order_db_data:
+  order_redis_data:
+  registry_db_data:
+
+networks:
+  microservice-network:
+    driver: bridge
+

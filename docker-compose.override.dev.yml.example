@@ -1,0 +1,37 @@
+# 开发环境配置示例
+# 复制为 docker-compose.override.yml 使用
+
+version: '3.8'
+
+services:
+  center-service:
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=dev
+      - LOG_LEVEL=debug
+
+  user-service:
+    ports:
+      - "8081:8081"
+    environment:
+      - ENV=dev
+      - LOG_LEVEL=debug
+    volumes:
+      # 挂载代码目录，支持热重载（如果使用air等工具）
+      - ./user_service:/app/user_service
+
+  order-service:
+    ports:
+      - "8082:8082"
+    environment:
+      - ENV=dev
+      - LOG_LEVEL=debug
+
+  gateway-service:
+    ports:
+      - "8083:8083"
+    environment:
+      - ENV=dev
+      - LOG_LEVEL=debug
+

@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+
+# Docker files
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Database init scripts (already copied in docker-compose)
+db-init/
+
+# Build artifacts
+*.log
+
